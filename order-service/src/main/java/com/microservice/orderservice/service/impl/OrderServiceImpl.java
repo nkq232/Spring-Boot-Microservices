@@ -22,21 +22,23 @@ import java.util.UUID;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
-    private final WebClient webClient;
+    private final WebClient.Builder webClient;
     @Override
     public void placeOrder(OrderRequest orderRequest) {
         Order order = new Order();
         order.setOrderNumber(UUID.randomUUID().toString());
         order.setOrderLineItemList(OrderMapper.toEntityList(orderRequest.getOrderLineItemDto()));
+        //Get all skuCode to check in stock
         List<String> skuCodes = order.getOrderLineItemList().stream().map(OrderLineItem::getSkuCode).toList();
-        InventoryResponse[] inStock = webClient.get()
-                .uri("http://localhost:8082/api/inventory",
+        //check in stock using inventory service
+        InventoryResponse[] inStock = webClient.build().get()
+                .uri("http://inventory-service/api/inventory",
                         uriBuilder -> uriBuilder.queryParam("skuCode", skuCodes).build())
                         .retrieve()
                                 .bodyToMono(InventoryResponse[].class)
                                         .block();
         boolean allProductsInStock = Arrays.stream(inStock).allMatch(InventoryResponse::isInStock);
-        if (Boolean.TRUE.equals(allProductsInStock)) {
+        if (Boolean.TRUE.equals(allProductsInStock) && skuCodes.size() == inStock.length) {
             orderRepository.save(order);
         } else {
             throw new IllegalArgumentException("Product is not in stock !");
