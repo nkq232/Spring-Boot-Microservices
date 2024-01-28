@@ -6,5 +6,5 @@ import com.microservice.orderservice.model.Order;
 import java.util.UUID;
 
 public interface OrderService {
-    public void placeOrder(OrderRequest orderRequest);
+    public String placeOrder(OrderRequest orderRequest);
 }

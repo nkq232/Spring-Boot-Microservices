@@ -8,6 +8,7 @@ import com.microservice.orderservice.model.OrderLineItem;
 import com.microservice.orderservice.repository.OrderRepository;
 import com.microservice.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -19,12 +20,13 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final WebClient.Builder webClient;
     @Override
-    public void placeOrder(OrderRequest orderRequest) {
+    public String placeOrder(OrderRequest orderRequest) {
         Order order = new Order();
         order.setOrderNumber(UUID.randomUUID().toString());
         order.setOrderLineItemList(OrderMapper.toEntityList(orderRequest.getOrderLineItemDto()));
@@ -40,6 +42,8 @@ public class OrderServiceImpl implements OrderService {
         boolean allProductsInStock = Arrays.stream(inStock).allMatch(InventoryResponse::isInStock);
         if (Boolean.TRUE.equals(allProductsInStock) && skuCodes.size() == inStock.length) {
             orderRepository.save(order);
+            log.info("Order {} created !", order.getId());
+            return "Order Placed Successfully";
         } else {
             throw new IllegalArgumentException("Product is not in stock !");
         }
