@@ -2,6 +2,7 @@ package com.microservice.orderservice.service.impl;
 
 import com.microservice.orderservice.dto.InventoryResponse;
 import com.microservice.orderservice.dto.OrderRequest;
+import com.microservice.orderservice.event.OrderPlaceEvent;
 import com.microservice.orderservice.mapper.OrderMapper;
 import com.microservice.orderservice.model.Order;
 import com.microservice.orderservice.model.OrderLineItem;
@@ -9,6 +10,7 @@ import com.microservice.orderservice.repository.OrderRepository;
 import com.microservice.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -25,6 +27,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final WebClient.Builder webClient;
+    private final KafkaTemplate<String, OrderPlaceEvent> kafkaTemplate;
     @Override
     public String placeOrder(OrderRequest orderRequest) {
         Order order = new Order();
@@ -39,10 +42,12 @@ public class OrderServiceImpl implements OrderService {
                         .retrieve()
                                 .bodyToMono(InventoryResponse[].class)
                                         .block();
+
         boolean allProductsInStock = Arrays.stream(inStock).allMatch(InventoryResponse::isInStock);
         if (Boolean.TRUE.equals(allProductsInStock) && skuCodes.size() == inStock.length) {
             orderRepository.save(order);
             log.info("Order {} created !", order.getId());
+            kafkaTemplate.send("notificationTopic", new OrderPlaceEvent(order.getOrderNumber()));
             return "Order Placed Successfully";
         } else {
             throw new IllegalArgumentException("Product is not in stock !");

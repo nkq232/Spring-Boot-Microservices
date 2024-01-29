@@ -18,9 +18,9 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(readOnly = true)
     public List<InventoryResponse> isInStock(List<String> skuCodes) throws InterruptedException {
-        log.info("Wait Started");
-        Thread.sleep(10000);
-        log.info("Wait End");
+//        log.info("Wait Started");
+//        Thread.sleep(10000);
+//        log.info("Wait End");
         return inventoryRepository.findBySkuCodeIn(skuCodes).stream()
                 .map(inventory ->
                     InventoryResponse.builder()
